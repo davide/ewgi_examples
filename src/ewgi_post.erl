@@ -26,7 +26,13 @@ post_app_error({ewgi_context, Request, _}) ->
     {ewgi_context, Request, Response}.
 
 display_form_data({ewgi_context, Request, _Response}=Ctx) ->
-    Body = ewgi_api:remote_user_data(Ctx),
+    Body = 
+	case ewgi_api:remote_user_data(Ctx) of
+	    undefined ->
+		"undefined";
+	    Body1 ->
+		io_lib:format("~p", [Body1])
+	end,
     ResponseHeaders = [{"Content-type", "text/plain"}],
     Response = {ewgi_response, 
                 {200, "OK"}, 
@@ -84,7 +90,7 @@ parse_ct(L) when is_list(L) ->
     end.
 
 parse_post(Ctx, App, ErrApp, "application/x-www-form-urlencoded", Max) ->
-    case smak_ewgi:content_length(Ctx) of
+    case ewgi_api:content_length(Ctx) of
         L when is_integer(L), L > Max ->
             ErrApp(Ctx);
         L when is_integer(L), L > 0 ->
