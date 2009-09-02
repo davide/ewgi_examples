@@ -6,11 +6,11 @@
 -module(ewgi_deflate).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
--export([handle/1]).
+-export([run/2]).
 
 -define(ENCODABLE, ["text/plain", "text/html", "text/xml"]).
 
-handle(Ctx) ->
+run(Ctx, []) ->
     %% get the accept encoding header
     AcceptEnc = ewgi_api:get_header_value("accept-encoding", Ctx),
     Hdrs = ewgi_api:response_headers(Ctx),

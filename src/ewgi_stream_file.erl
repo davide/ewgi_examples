@@ -4,30 +4,30 @@
 %% @doc ewgi stream file application
 -module(ewgi_stream_file).
 
--export([serve_file/2]).
+-export([run/2]).
 
-serve_file(Ctx, File) ->
+run(Ctx, [File]) ->
     Mime = guess_mime(File),
     case file:open(File, [raw, binary]) of
-        {ok, IoDevice} ->
-            %% Set ChunkSize to an optimal value
-            ChunkSize = 1024,
-            Stream = iodevice_stream(IoDevice, ChunkSize),
-            ewgi_api:response_status(
-              {200, "OK"}, 
-              ewgi_api:response_headers(
-                [{"Content-type", Mime}], 
-                ewgi_api:response_message_body(Stream, Ctx)
-               )
-             );
-        _ ->
-            %% Respond with 404...
-            ewgi_api:response_message_body(
-              "404 NOT FOUND", 
-              ewgi_api:response_status({404, "NOT FOUND"}, Ctx)
-             )
-    end.
- 
+	{ok, IoDevice} ->
+	    %% Set ChunkSize to an optimal value
+	    ChunkSize = 1024,
+	    Stream = iodevice_stream(IoDevice, ChunkSize),
+	    ewgi_api:response_status(
+	      {200, "OK"}, 
+	      ewgi_api:response_headers(
+		[{"Content-type", Mime}], 
+		ewgi_api:response_message_body(Stream, Ctx)
+	       )
+	     );
+	_ ->
+	    %% Respond with 404...
+	    ewgi_api:response_message_body(
+	      "404 NOT FOUND", 
+	      ewgi_api:response_status({404, "NOT FOUND"}, Ctx)
+	     )
+    end.	
+
 iodevice_stream(IoDevice, ChunkSize) ->
     fun() ->
             case file:read(IoDevice, ChunkSize) of
@@ -35,7 +35,10 @@ iodevice_stream(IoDevice, ChunkSize) ->
                     file:close(IoDevice),
                     {};
                 {ok, Data} ->
-                    {Data, iodevice_stream(IoDevice, ChunkSize)}
+                    {Data, iodevice_stream(IoDevice, ChunkSize)};
+		{error, Reason} ->
+		    io:format("got error: ~p~n", [Reason]),
+		    {}
             end
     end.
 

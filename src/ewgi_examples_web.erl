@@ -31,21 +31,21 @@ dispatcher(Ctx) ->
     dispatch(ewgi_api:path_info(Ctx), Ctx).
 
 dispatch("/", Ctx) ->
-    ewgi_index:handle(Ctx);
+    ewgi_index:run(Ctx,[]);
 dispatch("/hello", Ctx) ->
-    ewgi_hello:hello_app(Ctx);
+    ewgi_hello:run(Ctx,[]);
 dispatch("/HELLO", Ctx) ->
-    ewgi_hello:to_upper(ewgi_hello:hello_app(Ctx));
+    ewgi_to_upper:run(ewgi_hello:run(Ctx,[]), []);
 dispatch("/postex", Ctx) ->
-    ewgi_post:post_app(Ctx);
+    ewgi_post:post_app_example(Ctx);
 dispatch("/test.txt", Ctx) ->
-    ewgi_stream_file:serve_file(Ctx, "priv/www/test.txt");
+    ewgi_stream_file:run(Ctx,["priv/www/test.txt"]);
 dispatch("/gzhello", Ctx) ->
-    ewgi_deflate:handle(ewgi_hello:hello_app(Ctx));
+    ewgi_deflate:run(ewgi_hello:run(Ctx,[]), []);
 dispatch(_, Ctx) ->   
     ewgi_api:response_message_body("404 Not Found", 
                                    ewgi_api:response_status({404, "Not Found"}, Ctx)).
-    
+
 %% Internal API
 
 get_option(Option, Options) ->

@@ -6,54 +6,21 @@
 -module(ewgi_post).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
--export([post_app/1]).
+-export([run/2]).
+-export([post_app_example/1]).
 
-post_app(Ctx) ->
-    Parser = post_parse_middleware(2097152, %% 2 MB maximum
-                                   fun display_form_data/1,
-                                   fun post_app_error/1),
+-define(DEFAULT_MAX_LENGTH, 2097152). %% 2 MB maximum
+
+run(Ctx, [NoPostApp, FailedPostApp, SuccessPostApp]) ->
+    run(Ctx, [NoPostApp, FailedPostApp, SuccessPostApp, ?DEFAULT_MAX_LENGTH]);
+run(Ctx, [NoPostApp, FailedPostApp, SuccessPostApp, MaxLength]) ->
+    Parser = post_parse_middleware(MaxLength, SuccessPostApp, FailedPostApp),
     case ewgi_api:request_method(Ctx) of
-        'GET' ->
-            display_form(Ctx);
-        'POST' ->
-            Parser(Ctx)
+	'GET' ->
+	    NoPostApp(Ctx);
+	'POST' ->
+	    Parser(Ctx)
     end.
-
-post_app_error({ewgi_context, Request, _}) ->
-    Response = {ewgi_response, {400, "BAD REQUEST"}, [],
-                [<<"Maximum content-length exceeded.">>],
-                undefined},
-    {ewgi_context, Request, Response}.
-
-display_form_data({ewgi_context, Request, _Response}=Ctx) ->
-    Body = 
-	case ewgi_api:remote_user_data(Ctx) of
-	    undefined ->
-		"undefined";
-	    Body1 ->
-		io_lib:format("~p", [Body1])
-	end,
-    ResponseHeaders = [{"Content-type", "text/plain"}],
-    Response = {ewgi_response, 
-                {200, "OK"}, 
-                ResponseHeaders,
-                [Body], undefined},
-    {ewgi_context, Request, Response}.
-
-display_form({ewgi_context, Request, _Response}) ->
-    Body = <<"<form action=\"/postex\" method=\"post\">
-Un: <input type=\"text\" name=\"un\" value=\"\"/>
-<br/>
-Pw: <input type=\"text\" name=\"pw\" value=\"\"/>
-<br/><br/>
-<input type=\"submit\" name=\"submit\" value=\"Login\"/>
-</form>">>,
-    ResponseHeaders = [{"Content-type", "text/html"}],
-    Response = {ewgi_response, 
-                {200, "OK"}, 
-                ResponseHeaders,
-                [Body], undefined},
-    {ewgi_context, Request, Response}.
 
 %% MaxLength is the maximum size (in bytes) that the server will
 %% receive from the client.  App should be the application called when
@@ -115,3 +82,47 @@ read_input_string_cb(Acc) ->
        ({data, B}) ->
             read_input_string_cb([B|Acc])
     end.
+
+%% 
+%% example functions on how to use the post handling middleware
+%%
+post_app_example(Ctx) ->
+    run(Ctx, [fun display_form/1,
+	      fun post_app_error/1,
+	      fun display_form_data/1]).
+
+post_app_error({ewgi_context, Request, _}) ->
+    Response = {ewgi_response, {400, "BAD REQUEST"}, [],
+                [<<"Maximum content-length exceeded.">>],
+                undefined},
+    {ewgi_context, Request, Response}.
+
+display_form_data({ewgi_context, Request, _Response}=Ctx) ->
+    Body = 
+	case ewgi_api:remote_user_data(Ctx) of
+	    undefined ->
+		"undefined";
+	    Body1 ->
+		io_lib:format("~p", [Body1])
+	end,
+    ResponseHeaders = [{"Content-type", "text/plain"}],
+    Response = {ewgi_response, 
+                {200, "OK"}, 
+                ResponseHeaders,
+                [Body], undefined},
+    {ewgi_context, Request, Response}.
+
+display_form({ewgi_context, Request, _Response}) ->
+    Body = <<"<form action=\"/postex\" method=\"post\">
+Un: <input type=\"text\" name=\"un\" value=\"\"/>
+<br/>
+	    Pw: <input type=\"text\" name=\"pw\" value=\"\"/>
+<br/><br/>
+	    <input type=\"submit\" name=\"submit\" value=\"Login\"/>
+</form>">>,
+    ResponseHeaders = [{"Content-type", "text/html"}],
+	    Response = {ewgi_response, 
+			{200, "OK"}, 
+			ResponseHeaders,
+			[Body], undefined},
+	    {ewgi_context, Request, Response}.
