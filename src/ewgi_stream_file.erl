@@ -6,13 +6,25 @@
 
 -export([run/2]).
 
+%%
+%% Files opened in raw mode cannot be read in processes distinct
+%% from the one that opened the file! So we need to make sure 
+%% that both the open and read operations are done in the same
+%% process. 
+%% 
+%% Since a webserver might need to spawn a new process to handle
+%% our stream (Yaws and the old Inets implementation did)
+%% we'll get around that by delaying the open operation to the
+%% head of the stream.
+%% 
 run(Ctx, [File]) ->
-    Mime = guess_mime(File),
-    case file:open(File, [raw, binary]) of
-	{ok, IoDevice} ->
-	    %% Set ChunkSize to an optimal value
-	    ChunkSize = 1024,
-	    Stream = iodevice_stream(IoDevice, ChunkSize),
+    case file:read_file_info(File) of
+	{ok, _} ->
+	    Mime = guess_mime(File),
+	    LoadIoDevice = {open, File, [raw, binary]},
+ 	    %% Set ChunkSize to an optimal value
+ 	    ChunkSize = 1024,
+	    Stream = iodevice_stream(LoadIoDevice, ChunkSize),
 	    ewgi_api:response_status(
 	      {200, "OK"}, 
 	      ewgi_api:response_headers(
@@ -28,6 +40,15 @@ run(Ctx, [File]) ->
 	     )
     end.	
 
+iodevice_stream({open, File, Modes}, ChunkSize) ->
+    fun() ->
+	    case file:open(File, Modes) of
+		{ok, IoDevice} ->
+		    {<<>>, iodevice_stream(IoDevice, ChunkSize)};
+		_ ->
+		    {}
+	    end
+    end;
 iodevice_stream(IoDevice, ChunkSize) ->
     fun() ->
             case file:read(IoDevice, ChunkSize) of
