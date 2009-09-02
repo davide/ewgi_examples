@@ -6,10 +6,16 @@
 -module(ewgi_examples_web).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
+%% Mochiweb exports
 -export([start/1, 
          stop/0, 
-         loop/2,
-         dispatcher/1]).
+         loop/2]).
+
+%% Yaws exports
+-export([out/1]).
+
+%% Middleware exports
+-export([dispatcher/1]).
 
 %% External API
 
@@ -27,6 +33,12 @@ loop(Req, DocRoot) ->
     Mod = ewgi_mochiweb:new(fun ?MODULE:dispatcher/1),
     Mod:run(Req).
 
+%% Yaws' entry point
+out(Arg) ->
+    Mod = ewgi_yaws:new(fun ?MODULE:dispatcher/1),
+    Mod:run(Arg).
+
+%% This is the first middleware that gets called by the various webservers
 dispatcher(Ctx) ->
     dispatch(ewgi_api:path_info(Ctx), Ctx).
 
