@@ -41,13 +41,19 @@ upgrade() ->
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
 init([]) ->
-    Ip = case os:getenv("MOCHIWEB_IP") of false -> "0.0.0.0"; Any -> Any end,   
+    WebServer = case os:getenv("EWGI_WEBSERVER") of
+		    "mochiweb" -> mochiweb;
+		    "yaws" -> yaws;
+		    "inets" -> inets;
+		    _ -> mochiweb
+		end,
+    Ip = case os:getenv("EWGI_WEBSERVER_IP") of false -> "0.0.0.0"; Any -> Any end,   
     WebConfig = [
-         {ip, Ip},
+		 {ip, Ip},
                  {port, 8000},
                  {docroot, ewgi_examples_deps:local_path(["priv", "www"])}],
     Web = {ewgi_examples_web,
-           {ewgi_examples_web, start, [WebConfig]},
+           {ewgi_examples_web, start_link, [WebServer, WebConfig]},
            permanent, 5000, worker, dynamic},
 
     Processes = [Web],

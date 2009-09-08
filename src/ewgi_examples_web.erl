@@ -7,58 +7,63 @@
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
 %% Mochiweb exports
--export([start/1, 
+-export([start_link/2, 
          stop/0, 
          loop/2]).
 
 %% Yaws exports
 -export([out/1]).
 
-%% Middleware exports
--export([dispatcher/1]).
-
 %% External API
+start_link(WebServer, Options) ->
+    {ok, Pid} = start_webserver(WebServer, Options),
+    link(Pid),
+    {ok, Pid}.
 
-start(Options) ->
+start_webserver(mochiweb, Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
     Loop = fun (Req) ->
-                   ?MODULE:loop(Req, DocRoot)
+		   ?MODULE:loop(Req, DocRoot)
            end,
-    mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
+    mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]);
+
+start_webserver(inets, Options) ->
+    {DocRoot, Options1} = get_option(docroot, Options),
+    {Port, _Options2} = get_option(port, Options1),
+    application:start(inets),
+    application:set_env(ewgi, app_module, ewgi_dispatcher),
+    application:set_env(ewgi, app_function, dispatch),
+    inets:start(httpd, [{server_name,"ewgi_examples"}, {server_root,"."}, {document_root,DocRoot}, {modules,[ewgi_inets]}, {port,Port}]);
+
+start_webserver(yaws, Options) ->
+    {DocRoot, Options1} = get_option(docroot, Options),
+    {Port, _Options2} = get_option(port, Options1),
+    AppMods = [{"/", ewgi_examples_web}],
+    SL = [{servername,"ewgi_examples"}, {listen,{0,0,0,0}}, {port,Port}, {appmods,AppMods}],
+    LogDir = "./log/",
+    GL = [{logdir,LogDir}],
+    filelib:ensure_dir(LogDir),
+    ok = yaws:start_embedded(DocRoot, SL, GL),
+    {ok, whereis(yaws_server)}.
 
 stop() ->
     mochiweb_http:stop(?MODULE).
 
-loop(Req, DocRoot) ->
-    Mod = ewgi_mochiweb:new(fun ?MODULE:dispatcher/1),
+%% Mochiweb functions
+loop(Req, _DocRoot) ->
+    RootApp = ewgi_application:module_mw(ewgi_dispatcher, []),
+    %% could also be RootApp = fun ?ROOT_APP:dispatch/1,
+    Mod = ewgi_mochiweb:new(RootApp),
     Mod:run(Req).
 
-%% Yaws' entry point
+%% Yaws' functions
 out(Arg) ->
-    Mod = ewgi_yaws:new(fun ?MODULE:dispatcher/1),
+    RootApp = ewgi_application:module_mw(ewgi_dispatcher, []),
+    %% could also be RootApp = fun ?ROOT_APP:dispatch/1,
+    Mod = ewgi_yaws:new(RootApp),
     Mod:run(Arg).
 
-%% This is the first middleware that gets called by the various webservers
-dispatcher(Ctx) ->
-    dispatch(ewgi_api:path_info(Ctx), Ctx).
-
-dispatch("/", Ctx) ->
-    ewgi_index:run(Ctx,[]);
-dispatch("/hello", Ctx) ->
-    ewgi_hello:run(Ctx,[]);
-dispatch("/HELLO", Ctx) ->
-    ewgi_to_upper:run(ewgi_hello:run(Ctx,[]), []);
-dispatch("/postex", Ctx) ->
-    ewgi_post:post_app_example(Ctx);
-dispatch("/test.txt", Ctx) ->
-    ewgi_stream_file:run(Ctx,["priv/www/test.txt"]);
-dispatch("/gzhello", Ctx) ->
-    ewgi_deflate:run(ewgi_hello:run(Ctx,[]), []);
-dispatch(_, Ctx) ->   
-    ewgi_api:response_message_body("404 Not Found", 
-                                   ewgi_api:response_status({404, "Not Found"}, Ctx)).
 
 %% Internal API
-
 get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
