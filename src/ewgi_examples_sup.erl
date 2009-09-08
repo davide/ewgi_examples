@@ -56,5 +56,9 @@ init([]) ->
            {ewgi_examples_web, start_link, [WebServer, WebConfig]},
            permanent, 5000, worker, dynamic},
 
-    Processes = [Web],
+    SessionServer = {ewgi_session_server,
+		     {ewgi_session_server, start_link, []},
+		     permanent, 5000, worker, [ewgi_session_server]},
+
+    Processes = [Web, SessionServer],
     {ok, {{one_for_one, 10, 10}, Processes}}.

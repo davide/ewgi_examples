@@ -18,6 +18,10 @@ run({ewgi_context, Request, _Response}, []) ->
 <li><a href=\"/test.txt\">File streaming</a>: streams the the file priv/www/test.txt (source file: src/ewgi_stream_file.erl)</li>
 <li><a href=\"/gzhello\">Gzip encodes the Hello World example</a>: if the browser accepts gzip encoding the result of the hello_app is gzipped (source file: src/ewgi_deflate.erl)</li>
 <li><a href=\"/postex\">Post example</a>: middleware handling of POST data (source file: src/ewgi_post.erl)</li>
+<li>Session examples (src/ewgi_session.erl):
+<ul><li><a href=\"/session/cookie\">client-side</a>: encrypted client-side session storage using cookies (source file: src/ewgi_session_cookie_store.erl)</li>
+<li><a href=\"/session/server\">server-side</a>: server-side session storage using an ets table (source file: src/ewgi_session_server_store.erl)</li>
+</ul></li>
 </ul>
 </body>
 </html>",
