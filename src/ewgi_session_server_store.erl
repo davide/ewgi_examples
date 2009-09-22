@@ -20,78 +20,109 @@
 -author('Davide Marquês <nesrait@gmail.com>').
 
 %% Session Store API
--export([init/2, load_session/2, new_session/1, delete_session/2, store_session/3]).
+-export([load_session/2, delete_session/2, store_session/2]).
+
+%% Usage examples
+-export([create_example/1, delete_example/1]).
 
 -import(smak_cookie, [cookie_headers/4, cookie_safe_encode/1, cookie_safe_decode/1]).
 
 -include("smak.hrl").
--include("session.hrl").
 
--define(DEFAULT_COOKIE_NAME, "session_id").
+-define(SESSION_ID, "ewgi.session_server_store.session_id").
 -define(SESSION_SERVER_MODULE, ewgi_session_server).
-
--record(store_config, {
-	  server_id = undefined,
-          cookie_name = ?DEFAULT_COOKIE_NAME,
-	  secure_cookie = false,
-	  session_id = undefined
-	 }).
 
 %%====================================================================
 %% Session Store API
 %%====================================================================
--spec init(ewgi_context(), any()) -> {#store_config{},ok} | {#store_config{},no_session} | {#store_config{},{error,any()}}.
-init(Ctx, [ServerId, CookieName, SecureCookie] = _Args) when is_list(CookieName) ->
-    Cfg = #store_config{server_id=ServerId, cookie_name=CookieName, secure_cookie=SecureCookie},
+load_session(Ctx, [ServerId, CookieName, _SecureCookie, Timeout, IncludeIp] = StoreArgs) ->
     case ewgi_api:get_header_value("cookie", Ctx) of
 	undefined ->
-	    {Cfg, no_session};
+	    ewgi_session2:new_session(Ctx);
 	Cookies ->
 	    CookieValues = smak_cookie:parse_cookie(Cookies),
-	    case proplists:get_value(Cfg#store_config.cookie_name, CookieValues) of
+	    case proplists:get_value(CookieName, CookieValues) of
 		undefined ->
-		    {Cfg, no_session};
+		    ewgi_session:new_session(Ctx);
 		SidB64 ->
 		    BinSid = cookie_safe_decode(SidB64),
 		    case (catch(binary_to_term(BinSid))) of
 			Sid when is_list(Sid) ->
-			    {Cfg#store_config{session_id=Sid}, ok};
+			    Ctx1 = ewgi_api:store_data(?SESSION_ID, Sid, Ctx),
+			    case ?SESSION_SERVER_MODULE:get_session(ServerId, Sid) of
+				undefined ->
+				    ewgi_session:new_session(Ctx1);
+				Session ->
+				    case ewgi_session:init_session(Ctx1, Session, Timeout, IncludeIp) of
+					invalid_session ->
+					    %% DISPLAY ERROR!?
+					    Ctx_2 = ?MODULE:delete_session(Ctx, StoreArgs),
+					    ewgi_session:new_session(Ctx_2);
+					Ctx_2 ->
+					    Ctx_2
+				    end
+			    end;
 			_ ->
-			    {Cfg, {error, {?MODULE, cookie_tampered}}}
+			    %% DISPLAY ERROR! {?MODULE, cookie_tampered}
+			    ewgi_session:new_session(Ctx)
 		    end
-	    end
-    end;
-init(_Ctx, Args) ->
-    {error, {?MODULE, invalid_args, Args}}.
-
--spec load_session(ewgi_context(), #store_config{}) -> no_session | #session{} | {'error', any()}.
-load_session(_Ctx, #store_config{server_id=Server, session_id=Sid}) ->
-    case Sid of
-	undefined -> no_session;
-	_ ->
-	    case ?SESSION_SERVER_MODULE:get_session(Server, Sid) of
-		undefined -> no_session;
-		Session -> Session
 	    end
     end.
 
-new_session(#store_config{server_id=Server, session_id=Sid} = Cfg) ->
-    NewId = ?SESSION_SERVER_MODULE:new_session(Server, Sid),
-    Cfg#store_config{session_id=NewId}.
+store_session(Ctx, [ServerId, CookieName, SecureCookie, _Timeout, IncludeIp]) ->
+    Sid = ewgi_api:find_data(?SESSION_ID, Ctx),
+    case Sid of
+	undefined ->
+	    %% New session
+	    Session = ewgi_session:get_session(Ctx, IncludeIp),
+	    NewId = ?SESSION_SERVER_MODULE:save_new_session(ServerId, Session),
+	    SidB64 = cookie_safe_encode(term_to_binary(NewId)),
+	    cookie_headers(Ctx, CookieName, SidB64, SecureCookie);
+	Sid ->
+	    %% existing session
+	    Updated = ewgi_session:session_updated(Ctx),
+	    if Updated ->
+		    Session = ewgi_session:get_session(Ctx, IncludeIp),
+		    ?SESSION_SERVER_MODULE:save_session(ServerId, Sid, Session);
+	       true -> ok %% nothing to do!
+	    end,
+	    Ctx
+    end.
 
--spec store_session(ewgi_context(), #store_config{}, #session{}) -> ewgi_context().
-store_session(Ctx, #store_config{server_id=Server,
-				      session_id=Sid,
-				      cookie_name=CookieName,
-				      secure_cookie=Sec},
-		   Session) ->
-    ?SESSION_SERVER_MODULE:save_session(Server, Sid, Session),
-    SidB64 = cookie_safe_encode(term_to_binary(Sid)),
-    cookie_headers(Ctx, CookieName, SidB64, Sec).
-
-delete_session(Ctx, #store_config{server_id=Server, session_id=Sid, cookie_name=CookieName}) ->
+delete_session(Ctx, [ServerId, CookieName, SecureCookie]) ->
+    Sid = ewgi_api:find_data(?SESSION_ID, Ctx),
     case Sid of
 	undefined -> ok;
-	_ -> ?SESSION_SERVER_MODULE:delete_session(Server, Sid)
+	_ -> ?SESSION_SERVER_MODULE:delete_session(ServerId, Sid)
     end,
-    cookie_headers(Ctx, CookieName, [], false).
+    Ctx1 = ewgi_api:store_data(?SESSION_ID, undefined, Ctx),
+    cookie_headers(Ctx1, CookieName, [], SecureCookie).
+
+%%====================================================================
+%% example functions on how to use the session middleware
+%%====================================================================
+%% The server reference :: Pid | LocalName | {Node,Name} | {global,Name}
+-define(SESSION_SERVER_REF, ewgi_session_server).
+-define(SECURE_COOKIE, false).
+-define(INCLUDE_IP, true).
+-define(SESSION_TIMEOUT, 15 * 60 * 1000). %% 15 minutes
+-define(SESSION_STORE_ARGS, [
+			     ?SESSION_SERVER_REF,
+			     "server_session_id",
+			     ?SECURE_COOKIE,
+			     ?SESSION_TIMEOUT,
+			     ?INCLUDE_IP
+			    ]).
+
+create_example(Ctx) ->
+    SessionApp = fun ewgi_session:session_create_app/1,
+    Ctx1 = ?MODULE:load_session(Ctx, ?SESSION_STORE_ARGS),
+    Ctx2 = SessionApp(Ctx1),
+    ?MODULE:store_session(Ctx2, ?SESSION_STORE_ARGS).
+
+delete_example(Ctx) ->
+    SessionApp = fun ewgi_session:session_delete_app/1,
+    Ctx1 = ?MODULE:load_session(Ctx, ?SESSION_STORE_ARGS),
+    Ctx2 = SessionApp(Ctx1),
+    ?MODULE:store_session(Ctx2, ?SESSION_STORE_ARGS).
+

@@ -20,7 +20,7 @@
 
 -export([start_link/0, start_link/1, stop/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([new_session/2, get_session/2, save_session/3, delete_session/2]).
+-export([get_session/2, save_new_session/2, save_session/3, delete_session/2]).
 -export([purge_stale_sessions/1, purge_stale_sessions/2]).
 
 -include("session.hrl").
@@ -42,12 +42,12 @@ start_link(Name) ->
 stop(Server) ->
     gen_server:cast(Server, stop).
 
-new_session(Server, Data) ->
-    gen_server:call(Server, {new_session, Data}).
-
 get_session(Server, Sid) ->
     gen_server:call(Server, {get_session, Sid}).
 
+save_new_session(Server, Data) ->
+    gen_server:call(Server, {save_new_session, Data}).
+	
 save_session(Server, Sid, Data) ->
     gen_server:call(Server, {save_session, Sid, Data}).
 
@@ -69,18 +69,6 @@ init([]) ->
     random:seed(A1, A2, A3),
     {ok, undefined}.
 
-handle_call({new_session, PrevId}, _From, _State) ->
-    NewId = case PrevId of
-		undefined ->
-		    make_session_id();
-		Any ->
-		    case ets:member(?MODULE, Any) of
-			true -> Any;
-			false -> make_session_id()
-		    end
-	    end,
-    {reply, NewId, undefined};
-
 handle_call({get_session, Sid}, _From, _State) ->
     Data = case ets:lookup(?MODULE, Sid) of
 	       [{_,Session}] ->
@@ -89,6 +77,11 @@ handle_call({get_session, Sid}, _From, _State) ->
 		   undefined
 	   end,
     {reply, Data, undefined};
+
+handle_call({save_new_session, Session}, _From, _State) ->
+	NewSid = make_session_id(),	
+    ets:insert(?MODULE, {NewSid,Session}),
+    {reply, NewSid, undefined};
 
 handle_call({save_session, Sid, Session}, _From, _State) ->
     ets:insert(?MODULE, {Sid,Session}),

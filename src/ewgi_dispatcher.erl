@@ -30,14 +30,14 @@ dispatch("/gzhello", Ctx) ->
     ewgi_deflate:run(ewgi_hello:run(Ctx,[]), []);
 
 dispatch("/session/cookie", Ctx) ->
-    ewgi_session:cookie_store_example(Ctx, create);
+    ewgi_session_cookie_store:create_example(Ctx);
 dispatch("/session/cookie/delete", Ctx) ->
-    ewgi_session:cookie_store_example(Ctx, delete);
+    ewgi_session_cookie_store:delete_example(Ctx);
 
 dispatch("/session/server", Ctx) ->
-    ewgi_session:server_store_example(Ctx, create);
+    ewgi_session_server_store:create_example(Ctx);
 dispatch("/session/server/delete", Ctx) ->
-    ewgi_session:server_store_example(Ctx, delete);
+    ewgi_session_server_store:delete_example(Ctx);
 
 dispatch(_, Ctx) ->   
     ewgi_api:response_message_body("404 Not Found", 
