@@ -21,7 +21,9 @@
 -author('Davide Marquês <nesrait@gmail.com>').
 
 %% Session API
--export([new_session/1, delete_session/1, get_session_data/1, get_session_data/2, set_session_data/3, remove_session_data/2]).
+-export([new_session/1, delete_session/1]).
+%% Proplists-looking functions
+-export([get_all_values/1, get_value/2, get_value/3, set_value/3, delete/2]).
 
 %% Functions used by the session store modules
 -export([init_session/4, session_updated/1, get_session/2]).
@@ -47,14 +49,17 @@ delete_session(Ctx) ->
 %%====================================================================
 %% Functions that deal with the already loaded session_data
 %%====================================================================
-get_session_data(Ctx) ->
+get_all_values(Ctx) ->
     ewgi_api:find_data(?SESSION_DATA, Ctx).
 
-get_session_data(Ctx, Key) ->
+get_value(Key, Ctx) ->
+	get_value(Key, Ctx, undefined).
+	
+get_value(Key, Ctx, Default) ->
     Data = ewgi_api:find_data(?SESSION_DATA, Ctx),
     proplists:get_value(Key, Data).
 
-set_session_data(Ctx, Key, Value) ->
+set_value(Key, Value, Ctx) ->
     Data = ewgi_api:find_data(?SESSION_DATA, Ctx),
     Data1 =
 	case proplists:is_defined(Key, Data) of
@@ -66,7 +71,7 @@ set_session_data(Ctx, Key, Value) ->
 	end,
     update_session_data(Ctx, Data1).
 
-remove_session_data(Ctx, Key) ->
+delete(Key, Ctx) ->
     Data = ewgi_api:find_data(?SESSION_DATA, Ctx),
     case proplists:is_defined(Key, Data) of
 	true ->
@@ -130,11 +135,11 @@ get_session(Ctx, IncludeIp) ->
 %% example functions on how to use the session middleware
 %%====================================================================
 session_create_app(Ctx) ->
-    case ?MODULE:get_session_data(Ctx, name) of
+    case ?MODULE:get_value(name, Ctx) of
 	undefined ->
 	    Name = "Bill",
 	    Body = ["Hello stranger! I'll call you ", Name, " from now on! (please refresh the page)"],
-	    Ctx1 = ?MODULE:set_session_data(Ctx, name, "Bill");
+	    Ctx1 = ?MODULE:set_value(name, "Bill", Ctx);
 	Name ->
 	    Body = ["Hello ", Name, "! Nice to see you again! "
 		    "(no point in reloading again, delete the session by "
