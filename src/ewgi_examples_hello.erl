@@ -1,9 +1,9 @@
 %% @author Filippo Pacini <filippo.pacini@gmail.com>
 %% @copyright 2009 S.G. Consulting.
 
-%% @doc Hello world application and to_upper middleware
+%% @doc Hello world application
 
--module(ewgi_hello).
+-module(ewgi_examples_hello).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
 -export([run/2]).

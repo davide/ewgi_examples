@@ -3,7 +3,7 @@
 
 %% @doc Example Index. List of examples with links.
 
--module(ewgi_index).
+-module(ewgi_examples_index).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
 -export([run/2]).

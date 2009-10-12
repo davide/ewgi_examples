@@ -3,7 +3,7 @@
 
 %% @doc to_upper middleware
 
--module(ewgi_to_upper).
+-module(ewgi_examples_to_upper).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
 -export([run/2]).

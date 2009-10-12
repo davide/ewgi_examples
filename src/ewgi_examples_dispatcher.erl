@@ -3,7 +3,7 @@
 
 %% @doc dispatcher middleware
 
--module(ewgi_dispatcher).
+-module(ewgi_examples_dispatcher).
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
 %% Middleware exports
@@ -17,11 +17,11 @@ dispatch(Ctx) ->
     dispatch(ewgi_api:path_info(Ctx), Ctx).
 
 dispatch("/", Ctx) ->
-    ewgi_index:run(Ctx,[]);
+    ewgi_examples_index:run(Ctx,[]);
 dispatch("/hello", Ctx) ->
-    ewgi_hello:run(Ctx,[]);
+    ewgi_examples_hello:run(Ctx,[]);
 dispatch("/HELLO", Ctx) ->
-    ewgi_to_upper:run(ewgi_hello:run(Ctx,[]), []);
+    ewgi_examples_to_upper:run(ewgi_examples_hello:run(Ctx,[]), []);
 dispatch("/postex", Ctx) ->
     ewgi_post:post_app_example(Ctx);
 dispatch("/test.txt", Ctx) ->
