@@ -5,11 +5,14 @@ APP		:= ewgi_examples
 all: erl ebin/$(APP).app
 
 erl: ebin
-	(cd src;$(MAKE))
-	@touch src/$(APP).app
+	@./support/compile.erl ebin src/$(APP).app $(EBIN_DIRS)
+
+docs:
+	@erl -noshell -run edoc_run application '$(APP)' '"."' '[]'
 
 clean:
-	(cd src;$(MAKE) clean)
+	@echo "removing:"
+	@rm -fv ebin/*.beam ebin/*.app
 
 ebin/$(APP).app: src/$(APP).app Makefile
 	@./support/gen_app_file.erl src/$(APP).app $@ $(VSN)
