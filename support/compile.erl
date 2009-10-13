@@ -1,6 +1,18 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
 %%! -noinput +B
+
+%% @author Davide Marquês <nesrait@gmail.com>
+%% @copyright 2009 Davide Marquês <nesrait@gmail.com>
+%%
+%% @doc Wrapper script for building a project using an Emakefile.
+%% If new modules are detected we do a touch("src/$(APP).app") to trigger (in the
+%% Makefile) the recreation of the ebin/$(APP).app file with the new modules.
+%% @end
+%%
+%% Licensed under the MIT license:
+%% http://www.opensource.org/licenses/mit-license.php
+
 main([EBinFolder, AppFileSrc | Others]) ->
 	[code:add_patha(Other) || Other <- Others],
 	code:add_patha(EBinFolder),

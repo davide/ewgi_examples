@@ -1,5 +1,17 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
+
+%% @author Davide Marquês <nesrait@gmail.com>
+%% @copyright 2009 Davide Marquês <nesrait@gmail.com>
+%%
+%% @doc .app file generator: copies AppSrc to AppTarget replacing %VSN% by the
+%% Version passed as a parameter and %MODULES% by the names of the modules
+%% for which we can find .beam files under the AppTargets directory.
+%% @end
+%%
+%% Licensed under the MIT license:
+%% http://www.opensource.org/licenses/mit-license.php
+
 main([AppSrc, AppTarget, Version]) ->
 	EBinFolder = filename:dirname(AppTarget) ++ "/",
 	Modules = get_app_modules(EBinFolder),
