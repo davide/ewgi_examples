@@ -27,7 +27,7 @@ dispatch("/postex", Ctx) ->
 dispatch("/test.txt", Ctx) ->
     ewgi_stream_file:run(Ctx,["priv/www/test.txt"]);
 dispatch("/gzhello", Ctx) ->
-    ewgi_deflate:run(ewgi_hello:run(Ctx,[]), []);
+    ewgi_deflate:run(ewgi_examples_hello:run(Ctx,[]), []);
 
 dispatch("/session/cookie", Ctx) ->
     ewgi_session_cookie_store:create_example(Ctx);
