@@ -1,1 +1,78 @@
-Ewgi usage examples
+Ewgi Examples
+
+	An OTP application that serves as testing ground for the current
+	ewgi gateway implementations (so far: inets, mochiweb and yaws)
+	and includes some ewgi middleware examples (the basic ones
+	are part of this project while the more generic ones are/should
+	be located in the ewgi repository).
+	
+	On the long run all middleware present in the ewgi project should have
+	a working example in this project/repository -> having working 
+	examples makes a ton of difference on *whatever* adoption! :)
+
+
+Pre-requirement:
+	- ewgi installed under your erlang libs directory
+		or
+	- accessible under the deps folder
+
+Starting the server:
+	./start.sh inets
+	./start.sh mochiweb
+	./start.sh yaws
+
+	The selected server will run as a ewgi gateway on port 8000 and
+	by default will present an index page with links to try out the ewgi
+	middleware that comes bundled with the ewgi and ewgi_examples
+	project.
+
+
+First steps!
+
+	After browsing through the examples you'll probably want to figure out
+	how everything is connect. It's quite simple: in the src directory we
+	have a supervisor (ewgi_examples_sup.erl) responsible for booting the
+	selected webserver (take a peek at ewgi_examples_web.erl to see how
+	the various webservers are set up to serve as ewgi gateways). The
+	webserver in turn is designed to serve as an ewgi gateway and
+	immediately after it you'll have a glimpse of your first ewgi middleware.
+	
+	In this example that middleware is a dispatcher 
+	(src/middleware/ewgi_examples_dispatcher.erl) that analyses the 
+	requested url to determine where to route the request next.
+
+	Open the src/middleware/ewgi_examples_dispatcher.erl file and take
+	over a piece of url and start testing out your own ewgi middleware.
+
+	Checkout the ewgi_api module (in the ewgi project) for loads of
+	functions that help in managing the ewgi_context() - no need for
+	handling the tuples explicitely. :)
+
+	Another thing... If the ewgi project is build with the debug flag then
+	you'll be able to see your generated ewgi responses before they are
+	handled by the webserver.
+
+
+Terminology
+
+	Ewgi Middleware:
+		- any function that receives an ewgi_context() and does
+		  something with it. That's it. No further rules apply. :\
+		  
+	Ewgi Application:
+		- a 2 parameter function that receives an ewgi_context()
+		  as its first argument and a parameter list as a second argument.
+		  This convention/restriction from the generic "ewgi middleware"
+		  described above defines a stable interface that developers can
+		  count on when integrating 3rd party middleware.
+		
+		Check out the ewgi_application module for useful functions for
+		creating / managing ewgi applications.
+
+
+What else?
+
+	If you have ideas/patches/itches join us at
+	http://groups.google.com/group/ewgi. :)
+	
+	That's about it. Hack away!
