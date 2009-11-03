@@ -53,15 +53,13 @@ stop() ->
 loop(Req, _DocRoot) ->
     RootApp = ewgi_application:module_mw(ewgi_examples_dispatcher, []),
     %% could also be RootApp = fun ?ROOT_APP:dispatch/1,
-    Mod = ewgi_mochiweb:new(RootApp),
-    Mod:run(Req).
+    ewgi_mochiweb:run(RootApp, Req).
 
 %% Yaws' functions
 out(Arg) ->
     RootApp = ewgi_application:module_mw(ewgi_examples_dispatcher, []),
     %% could also be RootApp = fun ?ROOT_APP:dispatch/1,
-    Mod = ewgi_yaws:new(RootApp),
-    Mod:run(Arg).
+    ewgi_yaws:run(RootApp, Arg).
 
 
 %% Internal API
