@@ -48,9 +48,16 @@ init([]) ->
 		    _ -> mochiweb
 		end,
     Ip = case os:getenv("EWGI_WEBSERVER_IP") of false -> "0.0.0.0"; Any -> Any end,   
+	Port =
+		try os:getenv("EWGI_WEBSERVER_PORT") of
+			false -> 8000;
+			PortAsList -> list_to_integer(PortAsList)
+		catch
+			_:_ -> 8000
+		end,
     WebConfig = [
 		 {ip, Ip},
-                 {port, 8000},
+                 {port, Port},
                  {docroot, ewgi_examples_deps:local_path(["priv", "www"])}],
     Web = {ewgi_examples_web,
            {ewgi_examples_web, start_link, [WebServer, WebConfig]},
