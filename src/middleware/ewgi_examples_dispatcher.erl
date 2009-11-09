@@ -42,7 +42,7 @@ dispatch("/session/server/delete", Ctx) ->
 dispatch("/push_stream/chunked", Ctx) ->
     ewgi_push_stream:chunked_stream_example(Ctx);
 dispatch("/push_stream/non_chunked", Ctx) ->
-    ewgi_push_stream:chunked_stream_example(Ctx);	
+    ewgi_push_stream:non_chunked_stream_example(Ctx);	
 
 dispatch(_, Ctx) ->   
     ewgi_api:response_message_body("404 Not Found", 
