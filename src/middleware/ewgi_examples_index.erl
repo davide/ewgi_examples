@@ -28,6 +28,7 @@ run({ewgi_context, Request, _Response}, []) ->
 	<ul>
 		<li><a href=\"/push_stream/non_chunked\">non chunked</a></li>
 		<li><a href=\"/push_stream/chunked\">chunked</a></li>
+		<li><a href=\"/push_stream/ewgi_free\">ewgi_free (example of a chunked stream initialized without an ewgi_context)</a></li>
 	</ul>
 </li>
 </ul>
