@@ -31,8 +31,6 @@ start_webserver(inets, Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
     {Port, _Options2} = get_option(port, Options1),
     application:start(inets),
-    application:set_env(ewgi, app_module, ewgi_examples_dispatcher),
-    application:set_env(ewgi, app_function, dispatch),
     inets:start(httpd, [{server_name,"ewgi_examples"}, {server_root,"."}, {document_root,DocRoot}, {modules,[ewgi_inets]}, {port,Port}]);
 
 start_webserver(yaws, Options) ->
@@ -51,14 +49,18 @@ stop() ->
 
 %% Mochiweb functions
 loop(Req, _DocRoot) ->
-    RootApp = ewgi_application:module_mw(ewgi_examples_dispatcher, []),
-    %% could also be RootApp = fun ?ROOT_APP:dispatch/1,
+    {ok, M} = application:get_env(ewgi, ewgi_entry_app_module),
+    {ok, F} = application:get_env(ewgi, ewgi_entry_app_function),
+    {ok, A} = application:get_env(ewgi, ewgi_entry_app_args),
+    RootApp = ewgi_application:mfa_mw(M, F, A),
     ewgi_mochiweb:run(RootApp, Req).
 
 %% Yaws' functions
 out(Arg) ->
-    RootApp = ewgi_application:module_mw(ewgi_examples_dispatcher, []),
-    %% could also be RootApp = fun ?ROOT_APP:dispatch/1,
+    {ok, M} = application:get_env(ewgi, ewgi_entry_app_module),
+    {ok, F} = application:get_env(ewgi, ewgi_entry_app_function),
+    {ok, A} = application:get_env(ewgi, ewgi_entry_app_args),
+    RootApp = ewgi_application:mfa_mw(M, F, A),
     ewgi_yaws:run(RootApp, Arg).
 
 
