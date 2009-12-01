@@ -55,10 +55,17 @@ init([]) ->
 	catch
 	    _:_ -> 8000
 	end,
+    CertFile = ewgi_examples_deps:local_path(["priv", "server.crt"]),
+    KeyFile = ewgi_examples_deps:local_path(["priv", "server.key"]),
+    CaCertFile = ewgi_examples_deps:local_path(["priv", "cacert.pem"]),
+    SSLOptions = [{keyfile, KeyFile},
+		  {certfile, CertFile},
+		  {cacertfile, CaCertFile}],
     WebConfig = [
 		 {ip, Ip}
                  ,{port, Port}
                  ,{docroot, ewgi_examples_deps:local_path(["priv", "www"])}
+		 %%,{ssl, SSLOptions}
 		],
 
     application:set_env(ewgi, ewgi_entry_app_module, ewgi_examples_dispatcher),
