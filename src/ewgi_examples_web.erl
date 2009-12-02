@@ -26,10 +26,17 @@ start_link(WebServer, Options) ->
 
 start_webserver(mochiweb, Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
+    {SSLOptions, Options2} = get_option(ssl, Options1),
     Loop = fun (Req) ->
 		   ?MODULE:loop(Req, DocRoot)
            end,
-    mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]);
+    Options0 = [{name, ?MODULE}, {loop, Loop} | Options2],
+    ServerOptions = 
+	if	SSLOptions =:= undefined -> Options0;
+		true ->
+		Options0 ++ [{ssl, true}|SSLOptions]
+	end,
+    mochiweb_http:start(ServerOptions);
 
 start_webserver(inets, Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
