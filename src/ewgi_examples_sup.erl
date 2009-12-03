@@ -41,46 +41,43 @@ upgrade() ->
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
 init([]) ->
-    WebServer = case os:getenv("EWGI_WEBSERVER") of
-		    "mochiweb" -> mochiweb;
-		    "yaws" -> yaws;
-		    "inets" -> inets;
-		    _ -> mochiweb
-		end,
-    Ip = case os:getenv("EWGI_WEBSERVER_IP") of false -> "0.0.0.0"; Any -> Any end,   
-    Port =
-	try os:getenv("EWGI_WEBSERVER_PORT") of
-	    false -> 8000;
-	    PortAsList -> list_to_integer(PortAsList)
-	catch
-	    _:_ -> 8000
-	end,
-    EwgiEntryApp = {ewgi_examples_dispatcher, run, []},
-    ServerName = "ewgi_examples",
-    DocRoot = "priv/www",
-	
-    CertFile = ewgi_examples_deps:local_path(["priv", "server.crt"]),
-    KeyFile = ewgi_examples_deps:local_path(["priv", "server.key"]),
-    CaCertFile = ewgi_examples_deps:local_path(["priv", "cacert.pem"]),
-    SSLOptions = [{keyfile, KeyFile},
-		  {certfile, CertFile},
-		  {cacertfile, CaCertFile}],
-    SSL = [{ssl, SSLOptions}],
+    {ok, ServerConfigs} = application:get_env(ewgi_examples, webservers),
 
-    WebConfig =
-	[{ewgi_entry_app, EwgiEntryApp},
-	 {server_name, ServerName},
-	 {ip, Ip},
-	 {port, Port},
-	 {docroot, DocRoot}], %% ++ SSL,
-
-    Web = {ewgi_examples_web,
-           {ewgi_examples_web, start_link, [WebServer, WebConfig]},
-           permanent, 5000, worker, dynamic},
+    WebServers = [webserver_spec(Config) || Config <- ServerConfigs],
 
     SessionServer = {ewgi_session_server,
 		     {ewgi_session_server, start_link, []},
 		     permanent, 5000, worker, [ewgi_session_server]},
 
-    Processes = [Web, SessionServer],
+    Processes = [SessionServer | WebServers],
     {ok, {{one_for_one, 10, 10}, Processes}}.
+
+%% Internal functions
+webserver_spec(Config) ->
+    {ServerGateway, Config1} = get_option(server_gateway, Config, yaws),
+    {EwgiEntryApp, Config2} = get_option(ewgi_entry_app, Config1, undefined),
+    {ServerName, Config3} = get_option(server_name, Config2, undefined),
+    {Ip, Config4} = get_option(ip, Config3, "0.0.0.0"),
+    {Port, Config5} = get_option(port, Config4, 8000),
+    {DocRoot, Config6} = get_option(docroot, Config5, "priv/www"),
+    {SSLOptions, OtherConfigs} = get_option(ssl, Config6, undefined),
+
+    SSL =
+	case SSLOptions of
+	    undefined -> [];
+	    SSLOptions -> [{ssl, SSLOptions}]
+	end,
+
+    ServerConfig =
+	[{ewgi_entry_app, EwgiEntryApp},
+	 {server_name, ServerName},
+	 {ip, Ip},
+	 {port, Port},
+	 {docroot, DocRoot}] ++ SSL ++ OtherConfigs,
+
+    {ServerName,
+     {ewgi_examples_web, start_link, [ServerGateway, ServerConfig]},
+     permanent, 5000, worker, dynamic}.
+
+get_option(Option, Options, Default) ->
+    {proplists:get_value(Option, Options, Default), proplists:delete(Option, Options)}.
