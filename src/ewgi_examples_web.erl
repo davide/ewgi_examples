@@ -8,15 +8,15 @@
 
 %% Mochiweb exports
 -export([start_link/2, 
-         stop/0, 
-         loop/2]).
+         loop/3]).
 
 %% Yaws exports
 -export([out/1]).
--include_lib("yaws/include/yaws.hrl").
+-include_lib("yaws/include/yaws_api.hrl").
 
 %% Inets exports
--export([inets_ssl_password/0]).
+-export([save_inets_ssl_password/2, fetch_inets_ssl_password/1]).
+-define(INETS_SSL_ETS, inets_ssl_passwords).
 
 %% External API
 start_link(WebServer, Options) ->
@@ -25,27 +25,45 @@ start_link(WebServer, Options) ->
     {ok, Pid}.
 
 start_webserver(mochiweb, Options) ->
-    {DocRoot, Options1} = get_option(docroot, Options),
-    {SSLOptions, Options2} = get_option(ssl, Options1),
+    {ServerName, Options1} = get_option(server_name, Options),
+    {EwgiEntryApp, Options2} = get_option(ewgi_entry_app, Options1),
+    {DocRoot, Options3} = get_option(docroot, Options2),
+    {SSLOptions, OtherOptions} = get_option(ssl, Options3),
+
+    {M, F, A} = EwgiEntryApp,
+    Appl = ewgi_application:mfa_mw(M, F, A),
+
     Loop = fun (Req) ->
-		   ?MODULE:loop(Req, DocRoot)
+		   ?MODULE:loop(Req, Appl, DocRoot)
            end,
-    Options0 = [{name, ?MODULE}, {loop, Loop} | Options2],
-    ServerOptions = 
-	if	SSLOptions =:= undefined -> Options0;
-		true ->
-		Options0 ++ [{ssl, true}|SSLOptions]
+    ServerOptions0 = [{name, ServerName}, {loop, Loop} | OtherOptions],
+    SSL = 
+	if	SSLOptions =:= undefined -> [];
+		true -> [{ssl, true}|SSLOptions]
 	end,
+    ServerOptions = ServerOptions0 ++ SSL,
     mochiweb_http:start(ServerOptions);
 
 start_webserver(inets, Options) ->
-    {DocRoot, Options1} = get_option(docroot, Options),
-    {Port, Options2} = get_option(port, Options1),
-    {SSLOptions, _Options3} = get_option(ssl, Options2),
+    {ServerName, Options1} = get_option(server_name, Options),
+    {EwgiEntryApp, Options2} = get_option(ewgi_entry_app, Options1),
+    {Port, Options3} = get_option(port, Options2),
+    {DocRoot, Options4} = get_option(docroot, Options3),
+    {SSLOptions, _IgnoredOptions} = get_option(ssl, Options4),
     application:start(inets),
-    Options0 = [{server_name,"ewgi_examples"}, {server_root,"."}, {document_root,DocRoot}, {modules,[ewgi_inets]}, {port,Port}],
-    ServerOptions =
-	if	SSLOptions =:= undefined -> Options0;
+
+    {M, F, A} = EwgiEntryApp,
+    Appl = ewgi_application:mfa_mw(M, F, A),
+
+    ServerOptions0 = [{port, Port},
+		      {document_root, DocRoot},
+		      {server_root, "."},
+		      {server_name, ServerName},
+		      {modules, [ewgi_inets]},
+		      %% Made accessible in #mod.config_db
+		      {ewgi_entry_app, Appl}],
+    SSL =
+	if	SSLOptions =:= undefined -> [];
 		true ->
 		SSLKeyMatches = [
 				 {keyfile, ssl_certificate_key_file},
@@ -68,69 +86,64 @@ start_webserver(inets, Options) ->
 		    case proplists:get_value(password, SSLOptions) of
 			undefined -> [];
 			Pwd ->
-			    application:set_env(ewgi, ssl_password, Pwd),
+			    ?MODULE:save_inets_ssl_password(ServerName, Pwd),
 			    [{ssl_password_callback_module, ?MODULE},
-			     {ssl_password_callback_function, inets_ssl_password}]
+			     {ssl_password_callback_function, inets_ssl_password},
+			     {ssl_password_callback_arguments, [ServerName]}]
 		    end,
-		Options0 ++ [{socket_type, ssl}]
-		    ++ ConvertedSSLValues ++ SSLPasswordOptions
+		[{socket_type, ssl} | ConvertedSSLValues] ++ SSLPasswordOptions
 	end,
+    ServerOptions = ServerOptions0 ++ SSL,
     inets:start(httpd, ServerOptions);
 
 start_webserver(yaws, Options) ->
-    {DocRoot, Options1} = get_option(docroot, Options),
-    {Port, Options2} = get_option(port, Options1),
-    {SSLOptions, _Options3} = get_option(ssl, Options2),
-    AppMods = [{"/", ?MODULE}],
-    SL0 = [{servername,"ewgi_examples"}, {listen,{0,0,0,0}}, {port,Port}, {appmods,AppMods}],
-    SL =
-	if	SSLOptions =:= undefined -> SL0;
-		true ->
-		SSL = #ssl{
-		  keyfile = proplists:get_value(keyfile, SSLOptions),
-		  certfile = proplists:get_value(certfile, SSLOptions),
-		  verify = proplists:get_value(verify, SSLOptions, 0),
-		  depth = proplists:get_value(depth, SSLOptions, 1),
-		  password = proplists:get_value(password, SSLOptions),
-		  cacertfile = proplists:get_value(cacertfile, SSLOptions, ""),
-		  ciphers = proplists:get_value(ciphers, SSLOptions),
-		  cachetimeout = proplists:get_value(cachetimeout, SSLOptions)
-		 },
-		[{ssl, SSL} | SL0]
-		%% Applying this patch:
-		%% http://github.com/davide/yaws/commit/2ed673322970f6ea84f5ab9dde466e5efb89368b
-		%% enables passing the SSLOptions proplist directly, like this:
-		%% [{ssl, SSLOptions} | SL0]
-	end,
+    {ServerName, Options1} = get_option(server_name, Options),
+    {EwgiEntryApp, Options2} = get_option(ewgi_entry_app, Options1),
+    {DocRoot, Options3} = get_option(docroot, Options2),
+    {Port, Options4} = get_option(port, Options3),
+    {SSLOptions, _IgnoredOptions} = get_option(ssl, Options4),
+
+    {M, F, A} = EwgiEntryApp,
+    Appl = ewgi_application:mfa_mw(M, F, A),
+
+    ServerOptions0 = [{servername, ServerName},
+		      {listen, {0,0,0,0}},
+		      {port, Port},
+		      {appmods, [{"/", ?MODULE}]},
+		      %% Taking over #arg.opaque as the ewgi_entry_app carrier
+		      {opaque, Appl}],
+    SSL =
+	if	SSLOptions =:= undefined -> [];
+		true -> [{ssl, SSLOptions}]
+	end,		  
+    ServerOptions = ServerOptions0 ++ SSL,
     LogDir = "./log/",
-    GL = [{logdir,LogDir}],
+    GL = [{logdir, LogDir}],
     filelib:ensure_dir(LogDir),
-    ok = yaws:start_embedded(DocRoot, SL, GL),
+    ok = yaws:start_embedded(DocRoot, ServerOptions, GL),
     {ok, whereis(yaws_server)}.
 
-stop() ->
-    mochiweb_http:stop(?MODULE).
 
 %% Mochiweb functions
-loop(Req, _DocRoot) ->
-    {ok, M} = application:get_env(ewgi, ewgi_entry_app_module),
-    {ok, F} = application:get_env(ewgi, ewgi_entry_app_function),
-    {ok, A} = application:get_env(ewgi, ewgi_entry_app_args),
-    RootApp = ewgi_application:mfa_mw(M, F, A),
+loop(Req, RootApp, _DocRoot) ->
     ewgi_mochiweb:run(RootApp, Req).
 
 %% Inets functions
-inets_ssl_password() ->
-    Pwd = application:get_env(ewgi, ssl_password),
-    application:set_env(ewgi, ssl_password, undefined),
-    Pwd.
+save_inets_ssl_password(ServerName, Password) ->
+    case ets:info(?INETS_SSL_ETS) of
+	undefined -> ets:new(?INETS_SSL_ETS, [named_table]);
+	_ -> already_existed
+    end,
+    ets:insert(?INETS_SSL_ETS, {ServerName, Password}).
+
+fetch_inets_ssl_password(ServerName) ->
+    {ServerName, Password} = 
+	ets:lookup(?INETS_SSL_ETS, ServerName),
+    Password.
 
 %% Yaws' functions
 out(Arg) ->
-    {ok, M} = application:get_env(ewgi, ewgi_entry_app_module),
-    {ok, F} = application:get_env(ewgi, ewgi_entry_app_function),
-    {ok, A} = application:get_env(ewgi, ewgi_entry_app_args),
-    RootApp = ewgi_application:mfa_mw(M, F, A),
+    RootApp = Arg#arg.opaque,
     ewgi_yaws:run(RootApp, Arg).
 
 
