@@ -24,6 +24,9 @@ Starting the server:
 	By default two servers are started:
 		- mochiweb on port 80
 		- yaws on port 443 serving HTTPS requests
+		  (a self-signed certificate is provided and should work, if not just
+		   create your own: http://www.akadia.com/services/ssh_test_certificate.html)
+		
 	Both webservers are configured to present an index page with links
 	to try out the ewgi middleware that comes bundled with the ewgi and
 	ewgi_examples projects.
