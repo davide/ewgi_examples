@@ -17,14 +17,16 @@ Pre-requirement:
 	- accessible under the deps folder
 
 Starting the server:
-	./start.sh inets
-	./start.sh mochiweb
-	./start.sh yaws
+	./start.sh default
 
-	The selected server will run as a ewgi gateway on port 8000 and
-	by default will present an index page with links to try out the ewgi
-	middleware that comes bundled with the ewgi and ewgi_examples
-	project.
+	This will read the config/default.config configuration file and boot
+	the webservers listed there.
+	By default two servers are started:
+		- mochiweb on port 80
+		- yaws on port 443 serving HTTPS requests
+	Both webservers are configured to present an index page with links
+	to try out the ewgi middleware that comes bundled with the ewgi and
+	ewgi_examples projects.
 
 
 First steps!
@@ -32,9 +34,8 @@ First steps!
 	After browsing through the examples you'll probably want to figure out
 	how everything is connect. It's quite simple: in the src directory we
 	have a supervisor (ewgi_examples_sup.erl) responsible for booting the
-	selected webserver (take a peek at ewgi_examples_web.erl to see how
-	the various webservers are set up to serve as ewgi gateways). The
-	webserver in turn is designed to serve as an ewgi gateway and
+	ewgi webservers (as specified in the config/default.config file).
+	The webservers are designed to serve as an ewgi gateway and
 	immediately after it you'll have a glimpse of your first ewgi middleware.
 	
 	In this example that middleware is a dispatcher 
@@ -55,19 +56,43 @@ First steps!
 
 Terminology
 
-	Ewgi Middleware:
-		- any function that receives an ewgi_context() and does
-		  something with it. That's it. No further rules apply. :\
-		  
 	Ewgi Application:
-		- a 2 parameter function that receives an ewgi_context()
-		  as its first argument and a parameter list as a second argument.
-		  This convention/restriction from the generic "ewgi middleware"
-		  described above defines a stable interface that developers can
-		  count on when integrating 3rd party middleware.
+		- a 1-arity function that receives an ewgi_context() and
+		   returns another ewgi_context().
+		   The great advantage of Apps is that they allow the creation of
+		   complex stacks by simply chaining functions together.
+
+	Ewgi Middleware:
+		- any N-arity function that takes an ewgi_context() input
+		  and returns another ewgi_context().
 		
-		Check out the ewgi_application module for useful functions for
-		creating / managing ewgi applications.
+		- the recommended way to create ewgi middleware is to
+		  define it as a 2-arity function that receives the ewgi_context()
+		  as the first argument and a list of parameters as the second
+		  argument. Like so:
+		  
+			my_middleware(Ctx, [Arg1, Arg2, ...]) ->
+				Ctx1 = <do something>,
+				Ctx1.
+		  
+		  This convention/restriction from the generic "ewgi middleware"
+		  definition defines a stable interface that developers can
+		  count on when reading/integrating 3rd party middleware.
+		
+	The ewgi_application module contains useful functions for
+	creating / managing ewgi applications. 
+	
+	As an example... one of those useful functions is
+	ewgi_application:mfa_mw/3 which allows turning a ewgi middleware
+	into a ewgi application (something important if you need to combine
+	it with other ewgi apps):
+		MyApp = ewgi_application:mfa_mw(?MODULE, my_middleware, [Arg1, Arg2, ...])
+	
+	After which you can use it like this:
+		MyApp(Ctx)
+		
+	or in a more complex stack:
+		session_mw(cache_mw(MyApp(Ctx)))
 
 
 What else?
