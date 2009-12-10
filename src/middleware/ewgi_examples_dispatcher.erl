@@ -46,7 +46,8 @@ dispatch("/push_stream/ewgi_free", Ctx) ->
 dispatch("/zip", Ctx) ->
     Dir = "priv/www",
     ZipType = "zip",
-    ewgi_dir_zipper:run(Ctx, [Dir, ZipType]);
+    Filename = "directory_contents",
+    ewgi_dir_zipper:run(Ctx, [Dir, ZipType, Filename]);
 
 dispatch(_, Ctx) ->   
     ewgi_api:response_message_body("404 Not Found", 
