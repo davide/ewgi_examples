@@ -7,13 +7,10 @@
 -author('Filippo Pacini <filippo.pacini@gmail.com>').
 
 %% Middleware exports
--export([run/2, dispatch/1]).
+-export([run/2]).
 
 %% This is the first middleware that gets called by the various webservers
 run(Ctx, []) ->
-    dispatch(ewgi_api:path_info(Ctx), Ctx).
-
-dispatch(Ctx) ->
     dispatch(ewgi_api:path_info(Ctx), Ctx).
 
 dispatch("/", Ctx) ->
