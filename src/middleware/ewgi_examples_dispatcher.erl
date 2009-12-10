@@ -46,6 +46,11 @@ dispatch("/push_stream/non_chunked", Ctx) ->
 dispatch("/push_stream/ewgi_free", Ctx) ->
     ewgi_push_stream:ewgi_free_stream_example(Ctx);	
 
+dispatch("/zip", Ctx) ->
+    Dir = "priv/www",
+    ZipType = "zip",
+    ewgi_dir_zipper:run(Ctx, [Dir, ZipType]);
+
 dispatch(_, Ctx) ->   
     ewgi_api:response_message_body("404 Not Found", 
                                    ewgi_api:response_status({404, "Not Found"}, Ctx)).

@@ -31,6 +31,7 @@ run({ewgi_context, Request, _Response}, []) ->
 		<li><a href=\"/push_stream/ewgi_free\">ewgi_free (example of a chunked stream initialized without an ewgi_context)</a></li>
 	</ul>
 </li>
+<li><a href=\"/zip\">Dir Zipping example</a>: middleware that delivers the contents of a given directory as a zip|tgz|tgz2 file (source: ewgi/src/middleware/ewgi_dir_zipper/)</li>
 </ul>
 </body>
 </html>",
