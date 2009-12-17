@@ -49,6 +49,9 @@ dispatch("/zip", Ctx) ->
     Filename = "directory_contents",
     ewgi_dir_zipper:run(Ctx, [Dir, ZipType, Filename]);
 
+dispatch("/websocket", Ctx) ->
+    ewgi_websocket:websocket_example(Ctx);
+
 dispatch(_, Ctx) ->   
     ewgi_api:response_message_body("404 Not Found", 
                                    ewgi_api:response_status({404, "Not Found"}, Ctx)).
