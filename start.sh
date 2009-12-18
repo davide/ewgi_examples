@@ -14,7 +14,7 @@ if [ -n "$1" ]; then
 		ERL="$ERL $1"
 		shift
 	done
-	exec $ERL -pa $PWD/ebin $PWD/deps/*/ebin -boot start_sasl -s ewgi_examples -config config/$CONFIG.config
+	exec $ERL -pa $PWD/ebin $PWD/deps/*/ebin -boot start_sasl -s ewgi_examples -config $PWD/config/$CONFIG.config
 else
 	echo "Missing config_name as parameter!"
 fi
