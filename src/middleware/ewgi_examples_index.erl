@@ -32,6 +32,7 @@ run({ewgi_context, Request, _Response}, []) ->
 	</ul>
 </li>
 <li><a href=\"/zip\">Dir Zipping example</a>: middleware that delivers the contents of a given directory as a zip|tgz|tgz2 file (source: ewgi/src/middleware/ewgi_dir_zipper/)</li>
+<li><a href=\"/websocket\">Web Sockets example</a>: middleware that implements <a href=\"http://blog.chromium.org/2009/12/web-sockets-now-available-in-google.html\">Web Sockets</a> support (source: ewgi/src/middleware/ewgi_websockets/)</li>
 </ul>
 </body>
 </html>",
